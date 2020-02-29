@@ -14,7 +14,8 @@
 #################################################################
 
 
-import wikipedia, wikipediaapi
+import wikipedia
+import wikipediaapi
 import numpy as np
 import nltk, gensim
 import string
@@ -93,6 +94,32 @@ def getCatMembersTexts(cat_members_list, section = "Summary"):
             c_members_texts.append(c_page.summary)
 
     return c_members_texts
+
+def getAllCatArticles(topics_list):
+    '''
+    Retrieves all articles from categories pages given a list of topics.
+    Raw text Dataset structure: [ [topic_j_cat_pages], topic_j_label]
+    '''
+    init_time = time.time()
+
+    raw_dataset = list()
+
+    for topic_id, topic in enumerate(topics_list):
+            
+        cat_page_entry_list = []
+
+        cat_members_list = getCatMembersList(topic)
+        
+        page_summaries = getCatMembersTexts(cat_members_list)
+        print("Retrieved {} articles from category topic '{}'[TopicID:{}]".format(len(page_summaries), topic, topic_id))
+
+
+        raw_dataset.append( (page_summaries[1:], topic_id)) #first summary is the topic definition, needs to be exluded
+
+    lapsed_time = time.time() - init_time
+    print("===============================================================================\n Total Lapsed time: ", lapsed_time,"seconds.")
+
+    return raw_dataset
 
 def cleanText(text):
     '''
