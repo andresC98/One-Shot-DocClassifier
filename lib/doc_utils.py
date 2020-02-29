@@ -10,7 +10,7 @@
 #            - gensim                                           #
 #            - keras                                            #
 #            - string                                           #
-#            - wikipedia                                        #                                       
+#            - wikipedia                                        #
 #################################################################
 
 
@@ -22,11 +22,13 @@ import string
 from nltk.corpus import stopwords
 from nltk.tokenize import sent_tokenize, word_tokenize
 
+import keras
+from keras.utils import to_categorical
 
 ALL_TOPICS = ["Chemical engineering", "Biomedical engineering","Civil engineering", "Electrical engineering", "Mechanical engineering", "Aerospace engineering", "Financial engineering", "Software engineering" ,"Industrial engineering", "Materials engineering","Computer engineering"]
 
 
-def wiki_parse(target_article = None, topics = all_topics, split_on_words = True):
+def wikiParse(target_article = None, topics = ALL_TOPICS, split_on_words = True):
     '''
     Downloads and parses all summary definitions of the <topics> list specified.
     If a target article is specified, also returns its corresponding summary.
@@ -45,7 +47,8 @@ def wiki_parse(target_article = None, topics = all_topics, split_on_words = True
     else:
         return summaries
 
-def clean_text(text):
+
+def cleanText(text):
     '''
     Returns cleaned version of text.
     Note that text, initially divided in parrgrfs, loses structure and is grouped.
@@ -81,7 +84,8 @@ def clean_text(text):
     #print("Total number of words in corpus: ",n_words )
     return cleaned_corpus
 
-def vect_seq(sequences, max_dims=10000):
+
+def vectSeq(sequences, max_dims=10000):
     '''
     Source: "Deep Learning with Python - François Cholet"
     Returns vectorized version of sequence text data.
@@ -94,3 +98,48 @@ def vect_seq(sequences, max_dims=10000):
     
     return results
 
+
+def prepareNeuralNetData(target_article_name, topic_definitions = ALL_TOPICS):
+    '''
+    Given a target article name from wikipedia, and a list of topics,
+    retrieves from wikipedia their definitions, preprocess a training dataset
+    suitable for Keras neural net input.
+
+    Returns data for neural network training and testing 
+    '''
+    target_article, summaries = wikiParse(target_article_name,topics = topic_definitions)
+
+    cleaned_corpus = cleanText(summaries)
+    cleaned_target = cleanText([target_article])
+
+    foo = summaries.copy() #placeholder memory allocation
+    foo.append(target_article)
+
+    cleaned_total_corpus = cleanText(foo) #for building dictionary
+    
+    #Doc2Bow dictionary of full corpus
+    dictionary = gensim.corpora.Dictionary(cleaned_total_corpus)
+
+    #Preparing test text data: 
+    test_model_input = list()
+    test_model_input.append(dictionary.doc2idx(cleaned_target[0]))
+    test_model_input = np.array(test_model_input)
+    
+    #Preparing train text data:
+    model_input = list()
+    for topic in cleaned_corpus:
+        model_input.append(dictionary.doc2idx(topic))
+    model_input = np.array(model_input)
+
+    #Data sequencing  
+    x_train = vectSeq(model_input)
+    x_test = vectSeq(test_model_input)
+
+    #Generating labels (one hot encoding)
+    cat_topics = list()
+    for i, topic in enumerate(topic_definitions):
+        cat_topics.append(i)
+
+    y_train = to_categorical(cat_topics)
+
+    return x_train, y_train, x_test
