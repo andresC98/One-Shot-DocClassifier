@@ -14,7 +14,7 @@
 #################################################################
 
 
-import wikipedia
+import wikipedia, wikipediaapi
 import numpy as np
 import nltk, gensim
 import string
@@ -25,10 +25,23 @@ from nltk.tokenize import sent_tokenize, word_tokenize
 import keras
 from keras.utils import to_categorical
 
-ALL_TOPICS = ["Chemical engineering", "Biomedical engineering","Civil engineering", "Electrical engineering", "Mechanical engineering", "Aerospace engineering", "Financial engineering", "Software engineering" ,"Industrial engineering", "Materials engineering","Computer engineering"]
+ALL_TOPICS = ["Chemical engineering",
+              "Biomedical engineering",
+              "Civil engineering", 
+              "Electrical engineering", 
+              "Mechanical engineering", 
+              "Aerospace engineering", 
+              "Financial engineering", 
+              "Software engineering",
+              "Industrial engineering", 
+              "Materials engineering",
+              "Computer engineering"]
 
+WIKI = wikipediaapi.Wikipedia( language='en',
+                            extract_format=wikipediaapi.ExtractFormat.WIKI)
 
-def wikiParse(target_article = None, topics = ALL_TOPICS, split_on_words = True):
+    
+def getWikiSummaries(target_article = None, topics = ALL_TOPICS, split_on_words = True):
     '''
     Downloads and parses all summary definitions of the <topics> list specified.
     If a target article is specified, also returns its corresponding summary.
@@ -47,6 +60,39 @@ def wikiParse(target_article = None, topics = ALL_TOPICS, split_on_words = True)
     else:
         return summaries
 
+def getCatMembersList(topic):
+    '''
+    Returns for a given topic a list of its category members title pages.
+    '''
+    category = WIKI.page("Category:"+ topic)
+
+    cat_members_list = []
+    for c in category.categorymembers.values():
+        if "Category:" in c.title:
+            break
+        elif c.ns==0:
+            cat_members_list.append(c.title)
+    
+    return cat_members_list
+
+def getCatMembersTexts(cat_members_list, section = "Summary"):
+    '''
+    Retrieves either the summaries or the full wiki text of 
+    all pages in a given category members list.
+    '''
+    c_members_texts = []
+
+    for c_member in cat_members_list: 
+
+        c_page = WIKI.page(c_member)
+        if "all" in section:
+            #Obtain full wikipedia text from page
+            c_members_texts.append(c_page.text)
+        else:
+            #Obtain only Summary section of wiki article
+            c_members_texts.append(c_page.summary)
+
+    return c_members_texts
 
 def cleanText(text):
     '''
@@ -107,7 +153,7 @@ def prepareNeuralNetData(target_article_name, topic_definitions = ALL_TOPICS):
 
     Returns data for neural network training and testing 
     '''
-    target_article, summaries = wikiParse(target_article_name,topics = topic_definitions)
+    target_article, summaries = getWikiSummaries(target_article_name,topics = topic_definitions)
 
     cleaned_corpus = cleanText(summaries)
     cleaned_target = cleanText([target_article])
