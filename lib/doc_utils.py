@@ -18,7 +18,7 @@ import wikipedia
 import wikipediaapi
 import numpy as np
 import nltk, gensim
-import string
+import string, time
 
 from nltk.corpus import stopwords
 from nltk.tokenize import sent_tokenize, word_tokenize
@@ -46,7 +46,6 @@ def getWikiSummaries(target_article = None, topics = ALL_TOPICS, split_on_words 
     '''
     Downloads and parses all summary definitions of the <topics> list specified.
     If a target article is specified, also returns its corresponding summary.
-    By defautl, 
     '''
 
     summaries = list()
@@ -60,6 +59,25 @@ def getWikiSummaries(target_article = None, topics = ALL_TOPICS, split_on_words 
         return target, summaries
     else:
         return summaries
+
+def getWikiFullPage(target_article = None, topics = ALL_TOPICS, split_on_words = True):
+    '''
+    Downloads and parses the full page of definitions of the <topics> list specified.
+    If a target article is specified, also returns its corresponding summary.
+    '''
+    full_pages = list()
+    for i, topic in enumerate(topics):
+        print("Obtaining full wikipedia page for the topic: {}. (Definition of Class #[{}])".format(topic,i))
+        full_pages.append(wikipedia.page(topic))
+    if(target_article):
+        #Also return target article requested.
+        print("\nObtaining wikipedia summary for target article:",target_article)
+        target = wikipedia.summary(target_article)
+        return target, full_pages
+    else:
+        return full_pages
+
+    return 
 
 def getCatMembersList(topic):
     '''
@@ -99,32 +117,33 @@ def getAllCatArticles(topics_list):
     '''
     Retrieves all articles from categories pages given a list of topics.
     Raw text Dataset structure: [ [topic_j_cat_pages], topic_j_label]
+
+    Returns raw text dataset and the total number of articles retrieved.
     '''
-    init_time = time.time()
 
     raw_dataset = list()
+    total_num_articles = 0
 
     for topic_id, topic in enumerate(topics_list):
             
-        cat_page_entry_list = []
-
         cat_members_list = getCatMembersList(topic)
         
         page_summaries = getCatMembersTexts(cat_members_list)
         print("Retrieved {} articles from category topic '{}'[TopicID:{}]".format(len(page_summaries), topic, topic_id))
-
+        total_num_articles += (len(page_summaries) - 1)
 
         raw_dataset.append( (page_summaries[1:], topic_id)) #first summary is the topic definition, needs to be exluded
 
-    lapsed_time = time.time() - init_time
-    print("===============================================================================\n Total Lapsed time: ", lapsed_time,"seconds.")
 
-    return raw_dataset
+    return raw_dataset, total_num_articles
 
-def cleanText(text):
+def cleanText(text, full_page=False):
     '''
-    Returns cleaned version of text.
-    Note that text, initially divided in parrgrfs, loses structure and is grouped.
+    Given a raw text input , tokenizes into words and performs stopword
+    and punctuation removal operations; text thus loses structure and is grouped.
+    If 'full_page' specified, takes into account cleaning full content.
+
+    Returns cleaned version of text (list of cleaned words).
     '''
     nltk.download('stopwords',quiet=True)
     nltk.download('punkt',quiet=True) #obtaining punctuation library
@@ -133,8 +152,12 @@ def cleanText(text):
 
     corpus = list()
 
-    for topic in text:
-        corpus.append(word_tokenize(topic))
+    if full_page:
+        for topic in text:
+            corpus.append(word_tokenize(topic.content))
+    else:
+        for topic in text:
+            corpus.append(word_tokenize(topic))
 
     stop_words = set(stopwords.words('english'))
     punct_exclusions = set(string.punctuation)
@@ -161,7 +184,10 @@ def cleanText(text):
 def vectSeq(sequences, max_dims=10000):
     '''
     Source: "Deep Learning with Python - François Cholet"
-    Returns vectorized version of sequence text data.
+    Vectorizes a sequence of text data (supposed cleaned).
+
+    Returns numpy vector version of sequence text data, ready 
+    for Feedforward Neural Network input.
     '''
 
     results = np.zeros((len(sequences),max_dims))
@@ -171,48 +197,79 @@ def vectSeq(sequences, max_dims=10000):
     
     return results
 
-
-def prepareNeuralNetData(target_article_name, topic_definitions = ALL_TOPICS):
+def data_preprocessing(train_data, test_data, debug = False):
     '''
-    Given a target article name from wikipedia, and a list of topics,
-    retrieves from wikipedia their definitions, preprocess a training dataset
-    suitable for Keras neural net input.
+    Given raw wikipedia content pages cleans training and testing sets.
+    Creates doc2bow dictionary of full corpus.
 
-    Returns data for neural network training and testing 
+    Returns dictionary, cleaned dataset and pairs.
     '''
-    target_article, summaries = getWikiSummaries(target_article_name,topics = topic_definitions)
+    test_data_clean_pairs = list() #has labels too
+    test_data_clean = list()
 
-    cleaned_corpus = cleanText(summaries)
-    cleaned_target = cleanText([target_article])
+    for topic_cat in test_data:
+        topic_id = topic_cat[1]
+        cleaned_test_corpus = cleanText(topic_cat[0])
+        if debug:
+            print("Cleaning all articles from TopicID:", topic_id)
+            print(cleaned_test_corpus)
+        for article in cleaned_test_corpus:
+            test_data_clean_pairs.append((article,topic_id))
+            test_data_clean.append(article)
 
-    foo = summaries.copy() #placeholder memory allocation
-    foo.append(target_article)
+    #Clean topic defs (train data) and obtain dictionary of full corpus
+    train_data_clean = cleanText(train_data, full_page=True)
 
-    cleaned_total_corpus = cleanText(foo) #for building dictionary
-    
+    foo = train_data_clean.copy() #placeholder memory allocation
+    for page in test_data_clean: #appending test data for dictionary creation
+        foo.append(page)
+
     #Doc2Bow dictionary of full corpus
-    dictionary = gensim.corpora.Dictionary(cleaned_total_corpus)
+    dictionary = gensim.corpora.Dictionary(foo)
 
-    #Preparing test text data: 
+    if debug:
+        print(dictionary.token2id)
+        print("Total number of unique words in corpus:",len(dictionary))
+
+
+    return dictionary, train_data_clean, test_data_clean, test_data_clean_pairs
+
+def processNeuralNetData (train_data_clean, test_data_clean,test_data_clean_pairs , dictionary ,topics = ALL_TOPICS, debug = False):
+    '''
+    Given a set of testing data (articles to categorize) and
+    train data (topic definitions), process -->cleaned<-- text until obtaining
+    NeuralNet-ready encoded vectors. 
+
+    Returns training and test vectors.
+    '''
+
+    #Data sequencing/encoding  
+    train_model_input = list()
     test_model_input = list()
-    test_model_input.append(dictionary.doc2idx(cleaned_target[0]))
-    test_model_input = np.array(test_model_input)
-    
-    #Preparing train text data:
-    model_input = list()
-    for topic in cleaned_corpus:
-        model_input.append(dictionary.doc2idx(topic))
-    model_input = np.array(model_input)
 
-    #Data sequencing  
-    x_train = vectSeq(model_input)
-    x_test = vectSeq(test_model_input)
+    for topic in train_data_clean:
+        train_model_input.append(dictionary.doc2idx(topic))
+
+    for test_page in test_data_clean:
+        test_model_input.append(dictionary.doc2idx(test_page))
+     
+    train_model_input = np.array(train_model_input)
+    test_model_input = np.array(test_model_input)
+
+    x_train = vectSeq(train_model_input, max_dims=len(dictionary))
+    x_test = vectSeq(test_model_input, max_dims=len(dictionary))
 
     #Generating labels (one hot encoding)
-    cat_topics = list()
-    for i, topic in enumerate(topic_definitions):
-        cat_topics.append(i)
+    train_labels = list()
+    test_labels  = list()
 
-    y_train = to_categorical(cat_topics)
+    for i, topic in enumerate(ALL_TOPICS):
+        train_labels.append(i)
 
-    return x_train, y_train, x_test
+    for test_page in test_data_clean_pairs:
+        test_labels.append(test_page[1])
+        
+    y_train = to_categorical(train_labels)
+    y_test = to_categorical(test_labels) 
+
+    return x_train, y_train, x_test, y_test
