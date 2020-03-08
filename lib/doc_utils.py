@@ -13,18 +13,33 @@
 #            - wikipedia                                        #
 #################################################################
 
-
+#Wiki API libraries
 import wikipedia
 import wikipediaapi
+
+#Data processing
 import numpy as np
 import nltk, gensim
 import string, time
-
 from nltk.corpus import stopwords
 from nltk.tokenize import sent_tokenize, word_tokenize
 
+#Model evaluation and Visualization
+import seaborn as sn
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.metrics import confusion_matrix
+
+#NN Preprocessing
 import keras
 from keras.utils import to_categorical
+
+#Multithreading
+import threading
+
+# Removed topics (unavailable in wiki)
+# "Materials engineering",
+# "Financial engineering", 
 
 ALL_TOPICS = ["Chemical engineering",
               "Biomedical engineering",
@@ -32,24 +47,35 @@ ALL_TOPICS = ["Chemical engineering",
               "Electrical engineering", 
               "Mechanical engineering", 
               "Aerospace engineering", 
-              "Financial engineering", 
               "Software engineering",
               "Industrial engineering", 
-              "Materials engineering",
               "Computer engineering"]
 
+# "Mat",
+# "Fin", 
+
+ENG_TOPICS_ABVR = ["Chem",
+                    "Biomd",
+                    "Civil", 
+                    "Elec", 
+                    "Mech", 
+                    "Aero", 
+                    "SW",
+                    "Ind", 
+                    "Comp"]
+
 WIKI = wikipediaapi.Wikipedia( language='en',
-                            extract_format=wikipediaapi.ExtractFormat.WIKI)
+                               extract_format=wikipediaapi.ExtractFormat.WIKI)
 
     
-def getWikiSummaries(target_article = None, topics = ALL_TOPICS, split_on_words = True):
+def getWikiSummaries(target_article = None, topics_list = ALL_TOPICS, split_on_words = True):
     '''
-    Downloads and parses all summary definitions of the <topics> list specified.
+    Downloads and parses all summary definitions of the <topics_list> list specified.
     If a target article is specified, also returns its corresponding summary.
     '''
 
     summaries = list()
-    for i, topic in enumerate(topics):
+    for i, topic in enumerate(topics_list):
         print("Obtaining wikipedia summary for the topic: {}. (Class #[{}])".format(topic,i))
         summaries.append( wikipedia.summary(topic))
     if(target_article):
@@ -60,13 +86,13 @@ def getWikiSummaries(target_article = None, topics = ALL_TOPICS, split_on_words 
     else:
         return summaries
 
-def getWikiFullPage(target_article = None, topics = ALL_TOPICS, split_on_words = True):
+def getWikiFullPage(target_article = None, topics_list = ALL_TOPICS, split_on_words = True):
     '''
-    Downloads and parses the full page of definitions of the <topics> list specified.
+    Downloads and parses the full page of definitions of the <topics_list> list specified.
     If a target article is specified, also returns its corresponding summary.
     '''
     full_pages = list()
-    for i, topic in enumerate(topics):
+    for i, topic in enumerate(topics_list):
         print("Obtaining full wikipedia page for the topic: {}. (Definition of Class #[{}])".format(topic,i))
         full_pages.append(wikipedia.page(topic))
     if(target_article):
@@ -78,6 +104,40 @@ def getWikiFullPage(target_article = None, topics = ALL_TOPICS, split_on_words =
         return full_pages
 
     return 
+
+def concurrentGetWikiFullPage(target_article = None, topics_list = ALL_TOPICS, split_on_words = True):
+    '''
+    MULTITHREADING VERSION
+
+    Downloads and parses the full page of definitions of the <topics> list specified.
+    If a target article is specified, also returns its corresponding summary.
+    '''
+    global lock
+    global raw_dataset
+
+    lock = threading.Lock()
+    full_pages = ["" for elem in topics_list]
+
+
+    def getWikiDefinitionPage(topic_id, topic):
+        """wrapper function to start the job in the child process"""
+        print("Obtaining full wikipedia page for the topic: {}. (Definition of Class #[{}])".format(topic,topic_id))
+        lock.acquire()
+        full_pages[topic_id] = wikipedia.page(topic)
+        lock.release()
+
+    thread_list = []
+
+    for topic_id, topic in enumerate(topics_list):
+        thread = threading.Thread(target=getWikiDefinitionPage, args=(topic_id, topic,))
+        thread.daemon = True #so that closes when disc
+        thread_list.append(thread)
+        thread.start()
+    
+    for thread in thread_list:
+        thread.join()
+
+    return full_pages
 
 def getCatMembersList(topic):
     '''
@@ -113,7 +173,7 @@ def getCatMembersTexts(cat_members_list, section = "Summary"):
 
     return c_members_texts
 
-def getAllCatArticles(topics_list):
+def getAllCatArticles(topics_list, full_text_test = False):
     '''
     Retrieves all articles from categories pages given a list of topics.
     Raw text Dataset structure: [ [topic_j_cat_pages], topic_j_label]
@@ -128,16 +188,70 @@ def getAllCatArticles(topics_list):
             
         cat_members_list = getCatMembersList(topic)
         
-        page_summaries = getCatMembersTexts(cat_members_list)
-        print("Retrieved {} articles from category topic '{}'[TopicID:{}]".format(len(page_summaries), topic, topic_id))
-        total_num_articles += (len(page_summaries) - 1)
+        if full_text_test:
+            test_pages = getCatMembersTexts(cat_members_list, section="all")
+        else:
+            test_pages = getCatMembersTexts(cat_members_list)
 
-        raw_dataset.append( (page_summaries[1:], topic_id)) #first summary is the topic definition, needs to be exluded
+        print("Retrieved {} articles from category topic '{}'[TopicID:{}]".format(len(test_pages), topic, topic_id))
+        total_num_articles += (len(test_pages) - 1)
+
+        raw_dataset.append( (test_pages[1:], topic_id)) #first summary is the topic definition, needs to be exluded
 
 
     return raw_dataset, total_num_articles
 
-def cleanText(text, full_page=False):
+def concurrentGetAllCatArticles(topics_list, full_text_test=True):
+    '''
+    MULTITHREADED VERSION. Faster, but may contain bugs.
+
+    Retrieves all articles from categories pages given a list of topics.
+    Raw text Dataset structure: [ [topic_j_cat_pages], topic_j_label]
+
+    Returns raw text dataset and the total number of articles retrieved.
+    '''
+    global lock
+    global raw_dataset
+
+    lock = threading.Lock()
+
+    total_num_articles = 0
+    raw_dataset = ["" for elem in topics_list]
+
+    def getCategoryArticles(topic_id, topic):
+        """wrapper function to start the job in the child process"""
+        cat_members_list = getCatMembersList(topic)
+
+        if full_text_test:
+            test_pages = getCatMembersTexts(cat_members_list, section="all")
+        else:
+            test_pages = getCatMembersTexts(cat_members_list)
+
+        if(len(test_pages) == 0):
+            print("Could not retrieve articles from category topic:'{}'[TopicID:{}]\n".format(topic, topic_id))
+        else:
+            print("Retrieved {} articles from category topic '{}'[TopicID:{}]".format(len(test_pages) -1 , topic, topic_id))
+            lock.acquire()
+            raw_dataset[topic_id] = (test_pages[1:], topic_id) #first summary is the topic definition, needs to be exluded
+            lock.release()
+
+    thread_list = []
+    
+    for topic_id, topic in enumerate(topics_list):
+        thread = threading.Thread(target=getCategoryArticles, args=(topic_id, topic,))
+        thread_list.append(thread)
+        thread.start()
+    
+    for thread in thread_list:
+        thread.join()
+
+    for topic in raw_dataset:
+        if len(topic) != 0:
+            total_num_articles += len(topic[0])
+
+    return raw_dataset, total_num_articles
+
+def cleanText(text, full_page=False, topic_defs=True):
     '''
     Given a raw text input , tokenizes into words and performs stopword
     and punctuation removal operations; text thus loses structure and is grouped.
@@ -152,12 +266,18 @@ def cleanText(text, full_page=False):
 
     corpus = list()
 
-    if full_page:
-        for topic in text:
-            corpus.append(word_tokenize(topic.content))
-    else:
-        for topic in text:
-            corpus.append(word_tokenize(topic))
+    if topic_defs: #processing topic definitions
+        if full_page:
+            for topic in text:
+                corpus.append(word_tokenize(topic.content))
+        else:
+            for topic in text:
+                corpus.append(word_tokenize(topic))
+
+    if not topic_defs: #processing test data
+            for topic in text:
+                corpus.append(word_tokenize(topic))
+ 
 
     stop_words = set(stopwords.words('english'))
     punct_exclusions = set(string.punctuation)
@@ -197,7 +317,7 @@ def vectSeq(sequences, max_dims=10000):
     
     return results
 
-def data_preprocessing(train_data, test_data, debug = False):
+def dataPreprocessing(train_data, test_data, full_page = False, debug = False):
     '''
     Given raw wikipedia content pages cleans training and testing sets.
     Creates doc2bow dictionary of full corpus.
@@ -208,8 +328,13 @@ def data_preprocessing(train_data, test_data, debug = False):
     test_data_clean = list()
 
     for topic_cat in test_data:
+        if not topic_cat:
+            #for empty (not found) topics:
+            continue
         topic_id = topic_cat[1]
-        cleaned_test_corpus = cleanText(topic_cat[0])
+        
+        cleaned_test_corpus = cleanText(topic_cat[0], full_page, topic_defs = False)
+
         if debug:
             print("Cleaning all articles from TopicID:", topic_id)
             print(cleaned_test_corpus)
@@ -273,3 +398,36 @@ def processNeuralNetData (train_data_clean, test_data_clean,test_data_clean_pair
     y_test = to_categorical(test_labels) 
 
     return x_train, y_train, x_test, y_test
+
+def processClassifierData(test_raw_data):
+    """
+    Simple data conversion for Sklearn classifiers input.
+    """
+    y_test = []
+    x_test = []
+
+    for article_class in test_raw_data:
+        for article in article_class[0]:
+            x_test.append(article)
+            y_test.append(article_class[1])
+    
+    return x_test, y_test
+
+    
+def plotConfMatrix(y_test, predictions):
+    '''
+    Given a one-hot encoded test labels and predictions [class labels]
+    computes and plots confusion matrix of model classification result.
+    '''
+
+    conf_matrix = confusion_matrix(y_test.argmax(axis = 1), predictions)
+
+    df_cm = pd.DataFrame(conf_matrix, index = [top for top in ENG_TOPICS_ABVR],
+                    columns = [top for top in ENG_TOPICS_ABVR])
+
+    plt.figure(figsize = (10,7))
+    sn.heatmap(df_cm, annot=True)
+    plt.title("Confusion matrix of topic classification")
+    plt.show()
+
+    return
