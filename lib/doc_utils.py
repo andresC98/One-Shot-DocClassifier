@@ -399,10 +399,18 @@ def processNeuralNetData (train_data_clean, test_data_clean,test_data_clean_pair
 
     return x_train, y_train, x_test, y_test
 
-def processClassifierData(test_raw_data):
+def processClassifierData(train_raw_data, test_raw_data, topics = ALL_TOPICS):
     """
     Simple data conversion for Sklearn classifiers input.
     """
+    x_train = []
+    #Note: this supposes topic definition is full page
+    for wikipage in train_raw_data:
+        x_train.append(wikipage.content)
+    
+    y_train = [i for i in range(len(topics))]
+    
+
     y_test = []
     x_test = []
 
@@ -411,16 +419,20 @@ def processClassifierData(test_raw_data):
             x_test.append(article)
             y_test.append(article_class[1])
     
-    return x_test, y_test
+    return x_train, y_train, x_test, y_test
 
-    
-def plotConfMatrix(y_test, predictions):
+
+def plotConfMatrix(y_test, predictions, model):
     '''
     Given a one-hot encoded test labels and predictions [class labels]
     computes and plots confusion matrix of model classification result.
     '''
 
-    conf_matrix = confusion_matrix(y_test.argmax(axis = 1), predictions)
+    if model in "NN": #onehot encoded output of NN
+        conf_matrix = confusion_matrix(y_test.argmax(axis = 1), predictions)
+    else:
+        conf_matrix = confusion_matrix(y_test, predictions)
+
 
     df_cm = pd.DataFrame(conf_matrix, index = [top for top in ENG_TOPICS_ABVR],
                     columns = [top for top in ENG_TOPICS_ABVR])
