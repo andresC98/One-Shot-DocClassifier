@@ -443,3 +443,48 @@ def plotConfMatrix(y_test, predictions, model):
     plt.show()
 
     return
+
+def prepare_corpus(raw_text, train_data=True):
+    '''
+    Given a raw array of texts (either test data or training topics),
+    performs text preprocessing and outputs processed text.
+    '''
+    #TODO: Change "simple_preprocess()" call for custom preprocess function
+    if not train_data: #data is a list of tuples (2nd element being the class)
+        for i, topic in enumerate(raw_text):
+            for raw_article in topic[0]:
+                tokens = gensim.utils.simple_preprocess(raw_article)
+                yield tokens
+    else:
+        for i, raw_topic_def in enumerate(raw_text):
+            tokens = gensim.utils.simple_preprocess(raw_topic_def) 
+            #we also add topic class id for training data
+            yield gensim.models.doc2vec.TaggedDocument(tokens, [i])
+
+def evaluate_model(model, test_corpus, test_labels, eval="binary"):
+    '''
+    Given a doc2vec trained model grom GENSIM and a test labeled corpus,
+    performs similarity queries of test corpus vs topic definitions.
+    
+    Returns predictions array and accuracy list.
+    '''
+    accuracy_list = list()
+    predictions = list()
+    for doc_id, doc in enumerate(test_corpus):
+
+        inferred_vector = model.infer_vector(doc)
+        sims = model.docvecs.most_similar([inferred_vector], topn=len(model.docvecs))
+        most_similar_label = sims[0][0] #index 0 === most similar
+        predictions.append(most_similar_label)
+        second_most_similar_label = sims[1][0]
+        if most_similar_label == test_labels[doc_id]:
+            accuracy_list.append(1)
+        elif (second_most_similar_label == test_labels[doc_id] and "weighted" in eval):
+            accuracy_list.append(0.5)
+        else:
+            accuracy_list.append(0)
+
+    accuracy_list = np.array(accuracy_list)
+    print("Model {} accuracy over {} test documents: {}%.".format(eval,len(test_labels), np.mean(accuracy_list)*100))
+
+    return predictions, accuracy_list
