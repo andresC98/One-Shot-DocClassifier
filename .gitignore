@@ -1,0 +1,4 @@
+# ignore all venv files
+**/venv
+.DS_Store
+**/.idea
