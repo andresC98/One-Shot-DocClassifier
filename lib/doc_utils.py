@@ -21,8 +21,16 @@ import wikipediaapi
 import numpy as np
 import nltk, gensim
 import string, time
+from nltk.stem import WordNetLemmatizer
 from nltk.corpus import stopwords
 from nltk.tokenize import sent_tokenize, word_tokenize
+from nltk import download
+download('punkt')
+download('wordnet')
+download('stopwords')
+
+STOP_WORDS = set(stopwords.words('english'))
+LEMMATIZER =WordNetLemmatizer()
 
 # Model evaluation and Visualization
 import seaborn as sn
@@ -451,21 +459,36 @@ def plotConfMatrix(y_test, predictions, model):
 
     return
 
+def custom_preprocess(doc):
+    '''
+    TODO: Document
+    '''
+    tokenized_doc=word_tokenize(doc)
+    lemmatized_doc = [LEMMATIZER.lemmatize(word) for word in tokenized_doc]
+    #tokens= [word for word in lemmatized_doc if word.isalnum()]
+    tokens= [word.lower() for word in lemmatized_doc if word.isalnum() and not word in STOP_WORDS]
 
-def prepare_corpus(raw_text, train_data=True):
+    return tokens
+
+def prepare_corpus(raw_text, train_data=True, preprocess='simple'):
     '''
     Given a raw array of texts (either test data or training topics),
     performs text preprocessing and outputs processed text.
     '''
-    # TODO: Change "simple_preprocess()" call for custom preprocess function
     if not train_data:  # data is a list of tuples (2nd element being the class)
         for i, topic in enumerate(raw_text):
             for raw_article in topic[0]:
-                tokens = gensim.utils.simple_preprocess(raw_article)
+                if preprocess in 'simple':
+                    tokens = gensim.utils.simple_preprocess(raw_article)
+                else:
+                    tokens = custom_preprocess(raw_article)
                 yield tokens
     else:
         for i, raw_topic_def in enumerate(raw_text):
-            tokens = gensim.utils.simple_preprocess(raw_topic_def)
+            if preprocess in 'simple':
+                tokens = gensim.utils.simple_preprocess(raw_topic_def)
+            else:
+                tokens = custom_preprocess(raw_topic_def)
             # we also add topic class id for training data
             yield gensim.models.doc2vec.TaggedDocument(tokens, [i])
 
