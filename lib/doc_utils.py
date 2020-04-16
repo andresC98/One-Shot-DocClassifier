@@ -429,29 +429,39 @@ def processNeuralNetData(train_data_clean, test_data_clean, test_data_clean_pair
     return x_train, y_train, x_test, y_test
 
 
-def processClassifierData(train_raw_data, test_raw_data, topics=ALL_TOPICS):
+def processClassifierData(train_raw_data, test_raw_data, topics, dataset_type="wiki"):
     """
     Simple data conversion for Sklearn classifiers input.
     """
     x_train = []
-    # Note: this supposes topic definition is full page
-    for wikipage in train_raw_data:
-        x_train.append(wikipage.content)
-
-    y_train = [i for i in range(len(topics))]
-
     y_test = []
     x_test = []
 
-    for article_class in test_raw_data:
-        for article in article_class[0]:
-            x_test.append(article)
-            y_test.append(article_class[1])
+    # Note: this supposes topic definition is full page
+    if dataset_type in "wiki":
+        for wikipage in train_raw_data:
+            x_train.append(wikipage.content)
+
+        y_train = [i for i in range(len(topics))]
+
+        for article_class in test_raw_data:
+            for article in article_class[0]:
+                x_test.append(article)
+                y_test.append(article_class[1])
+    else: #arxiv dataset
+        for wikipage in train_raw_data: #also gets topics defs form wiki
+            x_train.append(wikipage.content)
+        
+        y_train = [i for i in range(len(topics))]
+        for subject in test_raw_data:
+            for paper in subject["papers"]:
+                x_test.append(paper["title"]+" : "+paper["abstract"])
+                y_test.append(subject["label"])
 
     return x_train, y_train, x_test, y_test
 
 
-def plotConfMatrix(y_test, predictions, model):
+def plotConfMatrix(y_test, predictions, model, dataset_type="wiki"):
     '''
     Given a one-hot encoded test labels and predictions [class labels]
     computes and plots confusion matrix of model classification result.
@@ -462,8 +472,12 @@ def plotConfMatrix(y_test, predictions, model):
     else:
         conf_matrix = confusion_matrix(y_test, predictions)
 
-    df_cm = pd.DataFrame(conf_matrix, index=[top for top in ENG_TOPICS_ABVR],
-                         columns=[top for top in ENG_TOPICS_ABVR])
+    if dataset_type in "wiki":
+        df_cm = pd.DataFrame(conf_matrix, index=[top for top in ENG_TOPICS_ABVR],
+                            columns=[top for top in ENG_TOPICS_ABVR])
+    else: #arxiv
+        df_cm = pd.DataFrame(conf_matrix, index=[top for top in ARXIV_SUBJECTS],
+                            columns=[top for top in ARXIV_SUBJECTS])
 
     plt.figure(figsize=(10, 7))
     sn.heatmap(df_cm, annot=True)
@@ -483,19 +497,28 @@ def custom_preprocess(doc):
 
     return tokens
 
-def prepare_corpus(raw_text, train_data=True, preprocess='simple'):
+def prepare_corpus(raw_text, train_data=True, preprocess='simple',dataset_type="wiki"):
     '''
     Given a raw array of texts (either test data or training topics),
     performs text preprocessing and outputs processed text.
     '''
-    if not train_data:  # data is a list of tuples (2nd element being the class)
-        for i, topic in enumerate(raw_text):
-            for raw_article in topic[0]:
-                if preprocess in 'simple':
-                    tokens = gensim.utils.simple_preprocess(raw_article)
-                else:
-                    tokens = custom_preprocess(raw_article)
-                yield tokens
+    if not train_data: 
+        if dataset_type in "wiki": # data is a list of tuples (2nd element being the class)
+            for i, topic in enumerate(raw_text):
+                for raw_article in topic[0]:
+                    if preprocess in 'simple':
+                        tokens = gensim.utils.simple_preprocess(raw_article)
+                    else:
+                        tokens = custom_preprocess(raw_article)
+                    yield tokens
+        else: #arxiv
+            for subject in raw_text:
+                for paper in subject["papers"]:
+                    if preprocess in 'simple':
+                       tokens = gensim.utils.simple_preprocess(paper["title"]+" : "+paper["abstract"])
+                    else:
+                        tokens = custom_preprocess(paper["title"]+" : "+paper["abstract"])
+                    yield tokens
     else:
         for i, raw_topic_def in enumerate(raw_text):
             if preprocess in 'simple':
