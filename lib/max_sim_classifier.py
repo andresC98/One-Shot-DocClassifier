@@ -97,7 +97,7 @@ class MaxSimClassifier(ClassifierMixin, BaseEstimator):
 
     def score(self, X, y, eval="weighted"):
         """
-        TODO: Document
+        TODO:  Document
         """
         accuracy_list = list()
         outputs = list()
@@ -114,6 +114,8 @@ class MaxSimClassifier(ClassifierMixin, BaseEstimator):
                 accuracy_list.append(1)
             elif (second_most_similar_label == y[i] and "weighted" in eval):
                 accuracy_list.append(0.5)
+            elif (second_most_similar_label == y[i] and "top2" in eval):
+                accuracy_list.append(1)
             else:
                 accuracy_list.append(0)
 
