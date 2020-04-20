@@ -20,12 +20,13 @@ from nltk.stem import WordNetLemmatizer
 from nltk.corpus import stopwords
 from nltk.tokenize import sent_tokenize, word_tokenize
 from nltk import download
+
 download('punkt')
 download('wordnet')
 download('stopwords')
 
 STOP_WORDS = set(stopwords.words('english'))
-LEMMATIZER =WordNetLemmatizer()
+LEMMATIZER = WordNetLemmatizer()
 
 # Model evaluation and Visualization
 import seaborn as sn
@@ -34,7 +35,6 @@ import matplotlib.pyplot as plt
 from sklearn.metrics import confusion_matrix
 
 # NN Preprocessing
-import keras
 from keras.utils import to_categorical
 
 # Removed topics (unavailable in wiki)
@@ -64,15 +64,15 @@ ENG_TOPICS_ABVR = ["Chem",
                    "Ind",
                    "Comp"]
 
-#For Arxiv parser (Topics)
+# For Arxiv parser (Topics)
 ARXIV_SUBJECTS = ["computer_science",
-                "economics",
-                "eess",
-                "mathematics",
-                "physics",
-                "q_biology",
-                "q_finance",
-                "statistics"]
+                  "economics",
+                  "eess",
+                  "mathematics",
+                  "physics",
+                  "q_biology",
+                  "q_finance",
+                  "statistics"]
 
 
 def cleanText(text, full_page=False, topic_defs=True):
@@ -244,14 +244,14 @@ def processClassifierData(train_raw_data, test_raw_data, topics, dataset_type="w
             for article in article_class[0]:
                 x_test.append(article)
                 y_test.append(article_class[1])
-    else: #arxiv dataset
-        for wikipage in train_raw_data: #also gets topics defs form wiki
+    else:  # arxiv dataset
+        for wikipage in train_raw_data:  # also gets topics defs form wiki
             x_train.append(wikipage.content)
-        
+
         y_train = [i for i in range(len(topics))]
         for subject in test_raw_data:
             for paper in subject["papers"]:
-                x_test.append(paper["title"]+" : "+paper["abstract"])
+                x_test.append(paper["title"] + " : " + paper["abstract"])
                 y_test.append(subject["label"])
 
     return x_train, y_train, x_test, y_test
@@ -270,10 +270,10 @@ def plotConfMatrix(y_test, predictions, model, dataset_type="wiki"):
 
     if dataset_type in "wiki":
         df_cm = pd.DataFrame(conf_matrix, index=[top for top in ENG_TOPICS_ABVR],
-                            columns=[top for top in ENG_TOPICS_ABVR])
-    else: #arxiv
+                             columns=[top for top in ENG_TOPICS_ABVR])
+    else:  # arxiv
         df_cm = pd.DataFrame(conf_matrix, index=[top for top in ARXIV_SUBJECTS],
-                            columns=[top for top in ARXIV_SUBJECTS])
+                             columns=[top for top in ARXIV_SUBJECTS])
 
     plt.figure(figsize=(10, 7))
     sn.heatmap(df_cm, annot=True)
@@ -282,24 +282,26 @@ def plotConfMatrix(y_test, predictions, model, dataset_type="wiki"):
 
     return
 
+
 def custom_preprocess(doc):
     '''
     TODO: Document
     '''
-    tokenized_doc=word_tokenize(doc)
+    tokenized_doc = word_tokenize(doc)
     lemmatized_doc = [LEMMATIZER.lemmatize(word) for word in tokenized_doc]
-    #tokens= [word for word in lemmatized_doc if word.isalnum()]
-    tokens= [word.lower() for word in lemmatized_doc if word.isalnum() and not word in STOP_WORDS]
+    # tokens= [word for word in lemmatized_doc if word.isalnum()]
+    tokens = [word.lower() for word in lemmatized_doc if word.isalnum() and not word in STOP_WORDS]
 
     return tokens
 
-def prepare_corpus(raw_text, train_data=True, preprocess='simple',dataset_type="wiki"):
+
+def prepare_corpus(raw_text, train_data=True, preprocess='simple', dataset_type="wiki"):
     '''
     Given a raw array of texts (either test data or training topics),
     performs text preprocessing and outputs processed text.
     '''
-    if not train_data: 
-        if dataset_type in "wiki": # data is a list of tuples (2nd element being the class)
+    if not train_data:
+        if dataset_type in "wiki":  # data is a list of tuples (2nd element being the class)
             for i, topic in enumerate(raw_text):
                 for raw_article in topic[0]:
                     if preprocess in 'simple':
@@ -307,13 +309,13 @@ def prepare_corpus(raw_text, train_data=True, preprocess='simple',dataset_type="
                     else:
                         tokens = custom_preprocess(raw_article)
                     yield tokens
-        else: #arxiv
+        else:  # arxiv
             for subject in raw_text:
                 for paper in subject["papers"]:
                     if preprocess in 'simple':
-                       tokens = gensim.utils.simple_preprocess(paper["title"]+" : "+paper["abstract"])
+                        tokens = gensim.utils.simple_preprocess(paper["title"] + " : " + paper["abstract"])
                     else:
-                        tokens = custom_preprocess(paper["title"]+" : "+paper["abstract"])
+                        tokens = custom_preprocess(paper["title"] + " : " + paper["abstract"])
                     yield tokens
     else:
         for i, raw_topic_def in enumerate(raw_text):
@@ -354,4 +356,3 @@ def evaluate_model(model, test_corpus, test_labels, eval="binary"):
     print("Model {} accuracy over {} test documents: {}%.".format(eval, len(test_labels), np.mean(accuracy_list) * 100))
 
     return predictions, accuracy_list
-
