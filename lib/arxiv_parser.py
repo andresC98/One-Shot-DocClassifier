@@ -43,7 +43,8 @@ def arxiv_parser(test_size):
     '''
     Test_size: number of articles per topic to obtain.
 
-    Returns [] a list of dictionaries representing each subject.
+    Returns :
+    - dataset: [] a list of dictionaries representing each subject.
         Each subject is a dictionary containing:
             - "Subject": str - arxiv subject
             - "label": integer - id representing that subject
@@ -51,6 +52,7 @@ def arxiv_parser(test_size):
                 -> Each {paper} is a dictionary containing:
                     "title": str
                     "abstract": str
+    - paperslist: [] a flattened list of the retrieved papers
     '''
     queries = init_arxiv_parser(test_size)
     if queries == -1: #Query not accepted
@@ -64,6 +66,7 @@ def arxiv_parser(test_size):
         arxiv_responses.append({"subject":query['subject'], "resp":BeautifulSoup(arxiv_response, 'html.parser')})
 
     papers_dataset = list()
+    papers_list = list()
 
     for subject_label, subject in enumerate(arxiv_responses):
         subject_xml_contents = list()
@@ -78,6 +81,7 @@ def arxiv_parser(test_size):
             raw_abstract = result.find_all("span", {"class": "abstract-full has-text-grey-dark mathjax"})[0].getText()
             abstract = " ".join(raw_abstract.split())
             paper = {"title":title, "abstract":abstract}
+            papers_list.append(paper)
             subject_papers.append(paper)
         
         papers_dataset.append({"Subject":subject["subject"],"label":subject_label,"papers":subject_papers})
@@ -87,4 +91,4 @@ def arxiv_parser(test_size):
         data_size += len(subject["papers"])
     print("Retrieved {} papers in total from {} subjects ({} from each).".format(data_size,len(papers_dataset), int(data_size/len(papers_dataset))))
 
-    return papers_dataset
+    return papers_dataset, papers_list
