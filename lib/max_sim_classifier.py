@@ -30,12 +30,13 @@ class MaxSimClassifier(ClassifierMixin, BaseEstimator):
     model: doc2vec base model from gensim
     """
 
-    def __init__(self, dataset_type, vector_size=50, min_count=2, epochs=50):
+    def __init__(self, dataset_type, preprocess = "custom" ,vector_size=50, min_count=2, epochs=50):
         # TODO: Add more doc2vec model parameters
         self.vector_size = vector_size
         self.min_count = min_count
         self.epochs = epochs
         self.dataset_type = dataset_type
+        self.preprocess = preprocess
 
         self.model = doc2vec.Doc2Vec(vector_size=self.vector_size,
                                      min_count=self.min_count,
@@ -55,7 +56,7 @@ class MaxSimClassifier(ClassifierMixin, BaseEstimator):
             Returns self.
         """
         # Adequating corpus for inference later
-        X = list(doc_utils.prepare_corpus(X, train_data=True, dataset_type=self.dataset_type))
+        X = list(doc_utils.prepare_corpus(X, train_data=True, preprocess = self.preprocess,dataset_type=self.dataset_type))
 
         self.model.build_vocab(X)
         self.model.train(X, total_examples=self.model.corpus_count, epochs=self.model.epochs)
@@ -81,7 +82,7 @@ class MaxSimClassifier(ClassifierMixin, BaseEstimator):
         # Check is fit had been called
         check_is_fitted(self, ['X_', 'y_'])
         # Input validation 
-        input_articles = list(doc_utils.prepare_corpus(X, train_data=False, dataset_type=self.dataset_type))
+        input_articles = list(doc_utils.prepare_corpus(X, train_data=False,preprocess = self.preprocess,dataset_type=self.dataset_type))
 
         outputs = list()
         for doc in input_articles:
@@ -103,7 +104,7 @@ class MaxSimClassifier(ClassifierMixin, BaseEstimator):
 
         check_is_fitted(self, ['X_', 'y_'])
 
-        input_articles = list(doc_utils.prepare_corpus(X, train_data=False, dataset_type=self.dataset_type))
+        input_articles = list(doc_utils.prepare_corpus(X, train_data=False,preprocess=self.preprocess ,dataset_type=self.dataset_type))
 
         for i, doc in enumerate(input_articles):
             inferred_vector = self.model.infer_vector(doc)
@@ -126,7 +127,7 @@ class MaxSimClassifier(ClassifierMixin, BaseEstimator):
 
     # TODO: Get topn instead of top1
     # TODO: Change so that instead of need to create new model, "refits" the actual model
-    def label_prop(self, x_train, dataset,paperslist, result="extended" ,top_n=2, debug = False ):
+    def label_prop(self, x_train, dataset,paperslist ,result="extended" ,top_n=2, debug = False ):
         """        
         Given a set of topic definitions and documents (x_train, dataset), 
         it performs inference by comparing docs against the topic definitions 
@@ -144,7 +145,8 @@ class MaxSimClassifier(ClassifierMixin, BaseEstimator):
             #TODO: Add Wiki dataset support.
             return -1
 
-        input_articles = list(doc_utils.prepare_corpus(dataset, train_data=False, dataset_type=self.dataset_type))
+        input_articles = list(doc_utils.prepare_corpus(dataset, train_data=False, 
+                                                       preprocess=self.preprocess,dataset_type=self.dataset_type))
 
         doc_topics_sims = [ [],[],[],[],[],[],[],[]]
 
