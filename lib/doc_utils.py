@@ -141,12 +141,13 @@ def vectSeq(sequences, max_dims=10000):
     return results
 
 
-def dataPreprocessing(train_data, test_data, full_page=False, debug=False):
+def processNeuralNetData(train_data, test_data, full_page=False, topics=ALL_TOPICS, debug=False):
     '''
-    Given raw wikipedia content pages cleans training and testing sets.
-    Creates doc2bow dictionary of full corpus.
+    Given raw wikipedia content pages  (topics and articles) cleans training and testing sets.
+    Creates doc2bow dictionary of full corpus, and sequences input data into suitable form for NeuralNet Classifier.
 
-    Returns dictionary, cleaned dataset and pairs.
+    Returns training and test vectors.
+    TODO: Adapt for ArXiv dataset.
     '''
     test_data_clean_pairs = list()  # has labels too
     test_data_clean = list()
@@ -180,18 +181,6 @@ def dataPreprocessing(train_data, test_data, full_page=False, debug=False):
         print(dictionary.token2id)
         print("Total number of unique words in corpus:", len(dictionary))
 
-    return dictionary, train_data_clean, test_data_clean, test_data_clean_pairs
-
-
-def processNeuralNetData(train_data_clean, test_data_clean, test_data_clean_pairs, dictionary, topics=ALL_TOPICS,
-                         debug=False):
-    '''
-    Given a set of testing data (articles to categorize) and
-    train data (topic definitions), process -->cleaned<-- text until obtaining
-    NeuralNet-ready encoded vectors. 
-
-    Returns training and test vectors.
-    '''
 
     # Data sequencing/encoding
     train_model_input = list()
@@ -227,7 +216,8 @@ def processNeuralNetData(train_data_clean, test_data_clean, test_data_clean_pair
 
 def processClassifierData(train_raw_data, test_raw_data, topics, dataset_type="wiki"):
     """
-    Simple data conversion for Sklearn classifiers input.
+    Given raw wikipedia pages (topic defs) as train data, and raw string articles as test data,
+    Generates (unprocessed text) train / test pairs suitable for Sklearn-compatible Classifiers.
     """
     x_train = []
     y_test = []
