@@ -8,13 +8,14 @@ This repository holds the contents developed for my bachelor thesis, titled: *"C
   > ***notebooks***: Contains .ipynb notebooks with practical examples on using the library as well as some of the results obtained. For the best execution ease, run them inside *Google Colaboratory* and just upload the modules contained inside "lib" folder.
 ***
 
-**-------------------------------> Examples using the library <--------------------------------**
+**Examples using the library**
 
 Look at `Notebooks\********.ipynb`
 
-***TODO:*** Include *Google Colaboratory* notebooks in "read only" mode / practice mode.
+*TODO:* Include *Google Colaboratory* notebooks in "read only" mode / practice mode.
 
-**------------------------------->   List of modules and contents    <--------------------------------**
+
+**List of modules and contents**
 
 
 **Text preprocessing and vectorization module: "doc_utils.py":**
@@ -22,7 +23,7 @@ Look at `Notebooks\********.ipynb`
 Contains the following utilities and auxiliary functions for the project:
 
 * Data cleaning / vectorization / BoW
-  - `prepare_corpus()´
+  - `prepare_corpus()`
   - `cleanText()`
   - `vectSeq()`
 
