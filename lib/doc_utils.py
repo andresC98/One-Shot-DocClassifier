@@ -65,17 +65,17 @@ ENG_TOPICS_ABVR = ["Chem",
                    "Comp"]
 
 # For Arxiv parser (Topics)
-ARXIV_SUBJECTS = ["computer_science",
-                  "economics",
-                  "eess",
-                  "mathematics",
-                  "physics",
-                  "q_biology",
-                  "q_finance",
-                  "statistics"]
+ARXIV_WIKI_TOPICS = ["Computer science",
+                    "Economics",
+                    "Systems engineering",
+                    "Mathematics",
+                    "Astrophysics",
+                    "Computational biology",
+                    "Quantitative finance",
+                    "Statistics"]
 
 
-def cleanText(text, full_page=False, topic_defs=True):
+def cleanText(text,preprocess = 'simple',full_page=False, topic_defs=True):
     '''
     Given a raw text input , tokenizes into words and performs stopword
     and punctuation removal operations; text thus loses structure and is grouped.
@@ -101,26 +101,29 @@ def cleanText(text, full_page=False, topic_defs=True):
     if not topic_defs:  # processing test data
         for topic in text:
             corpus.append(word_tokenize(topic))
+    
+    if preprocess in "simple": #just return tokenized corpus
+        return corpus
 
-    stop_words = set(stopwords.words('english'))
-    punct_exclusions = set(string.punctuation)
+    else:
+        stop_words = set(stopwords.words('english'))
+        punct_exclusions = set(string.punctuation)
 
-    cleaned_corpus = list()
+        cleaned_corpus = list()
 
-    for topic in corpus:
-        cleaned_corpus_topic = list()
-        for word in topic:
-            if ((word not in stop_words) and word not in punct_exclusions):
-                if '.' in word:  # solving wiki bug
-                    for w in word.split('.'):
-                        cleaned_corpus_topic.append(w)
+        for topic in corpus:
+            cleaned_corpus_topic = list()
+            for word in topic:
+                if ((word not in stop_words) and word not in punct_exclusions):
+                    if '.' in word:  # solving wiki bug
+                        for w in word.split('.'):
+                            cleaned_corpus_topic.append(w)
+                            n_words += 1
+                    else:
+                        cleaned_corpus_topic.append(word)
                         n_words += 1
-                else:
-                    cleaned_corpus_topic.append(word)
-                    n_words += 1
-        cleaned_corpus.append(cleaned_corpus_topic)
+            cleaned_corpus.append(cleaned_corpus_topic)
 
-    # print("Total number of words in corpus: ",n_words )
     return cleaned_corpus
 
 
@@ -141,34 +144,59 @@ def vectSeq(sequences, max_dims=10000):
     return results
 
 
-def processNeuralNetData(train_data, test_data, full_page=False, topics=ALL_TOPICS, debug=False):
+def processNeuralNetData(train_data, test_data, dataset_type ,preprocess = 'simple',full_page=False, debug=False):
     '''
-    Given raw wikipedia content pages  (topics and articles) cleans training and testing sets.
+    Given a dataset (wikipedia or arxiv) cleans training and testing sets.
     Creates doc2bow dictionary of full corpus, and sequences input data into suitable form for NeuralNet Classifier.
 
     Returns training and test vectors.
-    TODO: Adapt for ArXiv dataset.
     '''
     test_data_clean_pairs = list()  # has labels too
     test_data_clean = list()
 
-    for topic_cat in test_data:
-        if not topic_cat:
-            # for empty (not found) topics:
-            continue
-        topic_id = topic_cat[1]
+    if dataset_type in "wiki":
+        for topic_cat in test_data:
+            if not topic_cat:
+                # for empty (not found) topics:
+                continue
+            topic_id = topic_cat[1]
 
-        cleaned_test_corpus = cleanText(topic_cat[0], full_page, topic_defs=False)
+            cleaned_test_corpus = cleanText(topic_cat[0],full_page=full_page, preprocess=preprocess,topic_defs=False)
 
-        if debug:
-            print("Cleaning all articles from TopicID:", topic_id)
-            print(cleaned_test_corpus)
-        for article in cleaned_test_corpus:
-            test_data_clean_pairs.append((article, topic_id))
-            test_data_clean.append(article)
+            if debug:
+                print("Cleaning all articles from TopicID:", topic_id)
+                print(cleaned_test_corpus)
+            for article in cleaned_test_corpus:
+                test_data_clean_pairs.append((article, topic_id))
+                test_data_clean.append(article)
+
+    elif dataset_type in "arxiv":
+        for topic_cat in test_data[0]:
+
+            cleaned_test_corpus = list()
+            topic_id = topic_cat["label"]
+
+            for paper in topic_cat["papers"]:
+                if preprocess in 'simple':
+                    tokens = gensim.utils.simple_preprocess(paper["title"] + " : " + paper["abstract"])
+                else:
+                    tokens = custom_preprocess(paper["title"] + " : " + paper["abstract"])
+                
+                cleaned_test_corpus.append(tokens)
+
+            if debug:
+                print("Cleaning all articles from TopicID:", topic_id)
+                print(cleaned_test_corpus)
+            for processed_paper in cleaned_test_corpus:
+                test_data_clean_pairs.append((processed_paper, topic_id))
+                test_data_clean.append(processed_paper)
+
+    else:
+        print("ERROR: A dataset type must be specified: either 'wiki' or 'arxiv' datasets.")
+        return -1
 
     # Clean topic defs (train data) and obtain dictionary of full corpus
-    train_data_clean = cleanText(train_data, full_page=True)
+    train_data_clean = cleanText(train_data,preprocess = preprocess,topic_defs=True,full_page=True)
 
     foo = train_data_clean.copy()  # placeholder memory allocation
     for page in test_data_clean:  # appending test data for dictionary creation
@@ -202,7 +230,12 @@ def processNeuralNetData(train_data, test_data, full_page=False, topics=ALL_TOPI
     train_labels = list()
     test_labels = list()
 
-    for i, topic in enumerate(ALL_TOPICS):
+    if dataset_type in "wiki":
+        topics = ALL_TOPICS
+    elif dataset_type in "arxiv":
+        topics = ARXIV_WIKI_TOPICS
+
+    for i, topic in enumerate(topics):
         train_labels.append(i)
 
     for test_page in test_data_clean_pairs:
@@ -211,7 +244,7 @@ def processNeuralNetData(train_data, test_data, full_page=False, topics=ALL_TOPI
     y_train = to_categorical(train_labels)
     y_test = to_categorical(test_labels)
 
-    return x_train, y_train, x_test, y_test
+    return x_train, y_train, x_test, y_test, dictionary
 
 
 def processClassifierData(train_raw_data, test_raw_data, topics, dataset_type="wiki"):
@@ -239,7 +272,7 @@ def processClassifierData(train_raw_data, test_raw_data, topics, dataset_type="w
             x_train.append(wikipage.content)
 
         y_train = [i for i in range(len(topics))]
-        for subject in test_raw_data:
+        for subject in  test_raw_data[0]:
             for paper in subject["papers"]:
                 x_test.append(paper["title"] + " : " + paper["abstract"])
                 y_test.append(subject["label"])
@@ -262,8 +295,8 @@ def plotConfMatrix(y_test, predictions, model, dataset_type="wiki"):
         df_cm = pd.DataFrame(conf_matrix, index=[top for top in ENG_TOPICS_ABVR],
                              columns=[top for top in ENG_TOPICS_ABVR])
     else:  # arxiv
-        df_cm = pd.DataFrame(conf_matrix, index=[top for top in ARXIV_SUBJECTS],
-                             columns=[top for top in ARXIV_SUBJECTS])
+        df_cm = pd.DataFrame(conf_matrix, index=[top for top in ARXIV_WIKI_TOPICS],
+                             columns=[top for top in ARXIV_WIKI_TOPICS])
 
     plt.figure(figsize=(10, 7))
     sn.heatmap(df_cm, annot=True)
@@ -287,6 +320,7 @@ def custom_preprocess(doc):
 
 def prepare_corpus(raw_text, train_data=True, preprocess='simple', dataset_type="wiki"):
     '''
+    For GENSIM  model (MaxSimClassifier).
     Given a raw array of texts (either test data or training topics),
     performs text preprocessing and outputs processed text.
     '''
