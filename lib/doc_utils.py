@@ -305,6 +305,33 @@ def plotConfMatrix(y_test, predictions, model, dataset_type="wiki"):
 
     return
 
+def plotDefinitionLengths(definitions, dataset_type):
+    '''
+    Given topic definitions ("x_train") from either Wikipedia or Arxiv dataset (dataset_type)
+    , plots horizontal bar plot of topic definitio length (number of words).
+    '''
+    total_len = 0
+    topic_lengths = list()
+        
+    for topic in definitions:
+        n_words = len( (topic.content).split(" ") )
+        total_len += n_words        
+        topic_lengths.append(n_words)
+
+    print("Mean number of words per topic definition:", total_len/len(definitions))
+
+    if dataset_type in "arxiv":
+        plt.barh(ARXIV_WIKI_TOPICS, topic_lengths, align='center')
+    elif dataset_type in "wiki":
+        plt.barh(ALL_TOPICS, topic_lengths, align='center')
+
+    plt.title("Length of topic definitions")
+    plt.xlabel("Number of words")
+    plt.ylabel("topic")
+
+    plt.show()
+
+    return 
 
 def custom_preprocess(doc):
     '''
