@@ -272,7 +272,7 @@ def processClassifierData(train_raw_data, test_raw_data, topics, dataset_type="w
             x_train.append(wikipage.content)
 
         y_train = [i for i in range(len(topics))]
-        for subject in  test_raw_data[0]:
+        for subject in  test_raw_data:
             for paper in subject["papers"]:
                 x_test.append(paper["title"] + " : " + paper["abstract"])
                 y_test.append(subject["label"])
