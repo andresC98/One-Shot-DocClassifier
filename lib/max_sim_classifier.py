@@ -138,7 +138,6 @@ class MaxSimClassifier(ClassifierMixin, BaseEstimator):
         Resulting new training data either consisting of:
             - Original definitions + best paper/s
             - best paper/s matching the topic
-        Also returns the updated y_test and dataset without those papers.
         """
         if self.dataset_type not in  "arxiv":
             print("label propagation only supported for arxiv dataset")
@@ -156,13 +155,13 @@ class MaxSimClassifier(ClassifierMixin, BaseEstimator):
             top_n_sims = sims[:top_n]
 
             for i in range(top_n):
-                topic_id = top_n_sims[i][0]
-                topic_sim = top_n_sims[i][1]
+                topic_id = top_n_sims[i][0] #predicted topic id of paper
+                topic_sim = top_n_sims[i][1] #similarity
                 doc_topics_sims[topic_id].append((topic_sim, doc_id))
 
         best_papers_per_topic = [-1,-1,-1,-1,-1,-1,-1,-1]
 
-        n_papers_per_topic = len(paperslist)//len(doc_utils.ARXIV_SUBJECTS)
+        n_papers_per_topic = len(paperslist)//len(doc_utils.ARXIV_WIKI_TOPICS)
 
         for i,topic in enumerate(doc_topics_sims):
             paper_id = (max(topic, key = lambda i : i[0])[1])
@@ -170,8 +169,8 @@ class MaxSimClassifier(ClassifierMixin, BaseEstimator):
 
             if debug:
                 true_label = paper_id//n_papers_per_topic
-                print("Topic {} ({}) best matching paper: id #{}".format(i,doc_utils.ARXIV_SUBJECTS[i],paper_id))
-                print("\t--->True label:[",str(true_label), "](",doc_utils.ARXIV_SUBJECTS[true_label] ,
+                print("Topic {} ({}) best matching paper: id #{}".format(i,doc_utils.ARXIV_WIKI_TOPICS[i],paper_id))
+                print("\t--->True label:[",str(true_label), "](",doc_utils.ARXIV_WIKI_TOPICS[true_label] ,
                         ") \t\tPaper title:",paperslist[paper_id]['title'])
 
         x_train_ext = ["", "", "", "", "", "", "", ""]
@@ -188,31 +187,26 @@ class MaxSimClassifier(ClassifierMixin, BaseEstimator):
                 print("[ERROR] Result argument can be only 'extended' or 'bestpapers'.")
                 return -1
 
-        new_y_test = list() #recreating original y test
-        for doc_id, _ in enumerate(paperslist):
-            label = doc_id//n_papers_per_topic
-            new_y_test.append(label)
+        #Removed "new y", as we leave the papers in the test with their original (true) labels
+        #new_y_test = list() #recreating original y test
+        #for doc_id, _ in enumerate(paperslist):
+        #    label = doc_id//n_papers_per_topic
+        #    new_y_test.append(label)
 
-        for id_paper_to_remove in best_papers_per_topic:
-            topic_label = id_paper_to_remove//n_papers_per_topic
-            paper_topic_id = (id_paper_to_remove % n_papers_per_topic)
-            if debug:
-                print("Removing paper #{} (local #{}) from dataset (topic #{}).".format(id_paper_to_remove,
-                                                                                    paper_topic_id,
-                                                                                    topic_label))
-            #Removing the used papers from test data
-            del(dataset[topic_label]["papers"][paper_topic_id])
-            del(new_y_test[id_paper_to_remove])
+        #for id_paper_to_remove in best_papers_per_topic:
+        #    topic_label = id_paper_to_remove//n_papers_per_topic
+        #    paper_topic_id = (id_paper_to_remove % n_papers_per_topic)
+        #    if debug:
+        #        print("Removing paper #{} (local #{}) from dataset (topic #{}).".format(id_paper_to_remove,
+        #                                                                            paper_topic_id,
+        #                                                                            topic_label))
+        #    #Removing the used papers from test data
+        #    del(dataset[topic_label]["papers"][paper_topic_id])
+        #    del(new_y_test[id_paper_to_remove])
 
-        if debug:
-            total_n_papers = 0 
-            for topic in dataset:
-                total_n_papers += len(topic["papers"])
-            print("\nLength of dataset (nº papers) after label propagation: ", total_n_papers)
-        
         if result in "extended":
             new_x_train = x_train_ext
         else: #best papers
             new_x_train = x_train_papers
 
-        return dataset, new_x_train, new_y_test
+        return dataset, new_x_train
