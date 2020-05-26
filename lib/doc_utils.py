@@ -325,9 +325,9 @@ def plotDefinitionLengths(definitions, dataset_type):
     elif dataset_type in "wiki":
         plt.barh(ALL_TOPICS, topic_lengths, align='center')
 
-    plt.title("Length of topic definitions")
+    plt.title("Length of topic definitions of {} dataset".format(dataset_type))
     plt.xlabel("Number of words")
-    plt.ylabel("topic")
+    plt.ylabel("Topic")
 
     plt.show()
 
