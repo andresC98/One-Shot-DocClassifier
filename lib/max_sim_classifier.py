@@ -126,20 +126,20 @@ class MaxSimClassifier(ClassifierMixin, BaseEstimator):
         return np.mean(accuracy_list)
 
     def label_prop(self, x_train, dataset, paperslist = None ,result="extended" ,top_n=1, debug = False ):
-            """        
-            Given a set of topic definitions and documents (x_train, dataset), 
-            it performs inference by comparing docs against the topic definitions 
-            and obtain the most similar papers/articles predicted per topic. 
+        '''
+        Given a set of topic definitions and documents (x_train, dataset),
+        it performs inference by comparing docs against the topic definitions
+        and obtain the most similar papers/articles predicted per topic.
+        
+        Currently only supports top1 (i.e best prediction) addition.
 
-            Currently only supports top1 (i.e best prediction) addition.
-
-            Resulting new training data either consisting of:
-                - Original definitions + best article/paper
-                - best article/paper matching the topic
-            """
-        if "arxiv" in self.dataset_type:
-            return self.arxiv_label_prop(x_train, dataset, paperslist ,result ,top_n, debug )
-        else: #wiki_dataset
+        Resulting new training data either consisting of:
+            - Original definitions + best article/paper
+            - best article/paper matching the topic
+        '''
+        if(self.dataset_type == "arxiv"):
+            return self.arxiv_label_prop(x_train, dataset, paperslist ,result ,top_n, debug)
+        else:  #wikipedia data
             return self.wiki_label_prop(x_train, dataset, result, top_n, debug )
 
     def arxiv_label_prop(self, x_train, dataset,paperslist ,result="extended" ,top_n=1, debug = False ):
