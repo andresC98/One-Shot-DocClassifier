@@ -1,5 +1,6 @@
 from bs4 import BeautifulSoup
 import urllib.request
+import time
 
 #For Arxiv parser (Topics)
 ARXIV_SUBJECTS = ["computer_science",
@@ -47,7 +48,7 @@ def init_arxiv_parser(test_size = 50):
 
 
 
-def arxiv_parser(test_size):
+def arxiv_parser(test_size, debug = False):
     '''
     Test_size: number of articles per topic to obtain.
 
@@ -69,9 +70,13 @@ def arxiv_parser(test_size):
     arxiv_responses = list() #Will store here the BS4 formatted responses
     
     for query in queries:
+        print("Retrieving papers for subject:" ,query['subject'])   
         arxiv_request = urllib.request.urlopen(query['url'])
+        if debug:
+            print("Request code: ", arxiv_request.code)
         arxiv_response = arxiv_request.read()
         arxiv_responses.append({"subject":query['subject'], "resp":BeautifulSoup(arxiv_response, 'html.parser')})
+        time.sleep(1)
 
     papers_dataset = list()
     papers_list = list()
