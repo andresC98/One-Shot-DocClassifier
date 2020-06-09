@@ -125,7 +125,7 @@ class MaxSimClassifier(ClassifierMixin, BaseEstimator):
         # print("Model {} accuracy over {} test documents: {}%.".format(eval, len(y), np.mean(accuracy_list) * 100))
         return np.mean(accuracy_list)
 
-    def label_prop(self, x_train, dataset, paperslist = None ,result="extended" ,top_n=1, debug = False ):
+    def pseudo_label(self, x_train, dataset, paperslist = None ,result="extended" ,top_n=1, debug = False ):
         '''
         Given a set of topic definitions and documents (x_train, dataset),
         it performs inference by comparing docs against the topic definitions
@@ -138,11 +138,11 @@ class MaxSimClassifier(ClassifierMixin, BaseEstimator):
             - best article/paper matching the topic
         '''
         if(self.dataset_type == "arxiv"):
-            return self.arxiv_label_prop(x_train, dataset, paperslist ,result ,top_n, debug)
+            return self.arxiv_pseudo_label(x_train, dataset, paperslist ,result ,top_n, debug)
         else:  #wikipedia data
-            return self.wiki_label_prop(x_train, dataset, result, top_n, debug )
+            return self.wiki_pseudo_label(x_train, dataset, result, top_n, debug )
 
-    def arxiv_label_prop(self, x_train, dataset,paperslist ,result="extended" ,top_n=1, debug = False ):
+    def arxiv_pseudo_label(self, x_train, dataset,paperslist ,result="extended" ,top_n=1, debug = False ):
 
             if paperslist is None:
                 print("ERROR: paperlist from Arxivparser needed")
@@ -198,7 +198,7 @@ class MaxSimClassifier(ClassifierMixin, BaseEstimator):
 
             return dataset, new_x_train
 
-    def wiki_label_prop(self, x_train, dataset,result="extended" ,top_n=2, debug = False ):
+    def wiki_pseudo_label(self, x_train, dataset,result="extended" ,top_n=2, debug = False ):
 
         input_articles = list(doc_utils.prepare_corpus(dataset, train_data=False,preprocess=self.preprocess,dataset_type=self.dataset_type))
 
