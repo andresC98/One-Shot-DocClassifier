@@ -171,7 +171,7 @@ def processNeuralNetData(train_data, test_data, dataset_type ,preprocess = 'simp
                 test_data_clean.append(article)
 
     elif dataset_type in "arxiv":
-        for topic_cat in test_data[0]:
+        for topic_cat in test_data:
 
             cleaned_test_corpus = list()
             topic_id = topic_cat["label"]
