@@ -407,3 +407,35 @@ def evaluate_model(model, test_corpus, test_labels, eval="binary"):
     print("Model {} accuracy over {} test documents: {}%.".format(eval, len(test_labels), np.mean(accuracy_list) * 100))
 
     return predictions, accuracy_list
+
+def top2_acc(probabilities, true_classes, model,verbose=0):
+    '''
+    Given a probability output of an C-Dimensional Sklearn <model>, outputs the
+    Top-2 accuracy and the top_1 (classical accuracy) of the results, given the 
+    true_classes of the classification problem.
+    '''
+    top1_acc_list = []
+    top2_acc_list = []
+    top2_classes_list = [] 
+
+    for i, probs in enumerate(probabilities):
+        top_2_preds = np.argsort(probs, axis=-1)[::-1][:2]
+        top2_classes_list.append(top_2_preds)
+
+        if true_classes[i] not in top_2_preds:
+            top1_acc_list.append(0)
+            top2_acc_list.append(0)
+        elif true_classes[i] == top_2_preds[0]:
+            top1_acc_list.append(1)
+            top2_acc_list.append(1)
+        else:
+            top1_acc_list.append(0)
+            top2_acc_list.append(1)
+
+    top1_acc = np.mean(top1_acc_list)
+    top2_acc = np.mean(top2_acc_list)
+
+    if verbose:
+        print("TOP-1 acc.: \t{:.3f}\nTOP-2 acc.: \t{:.3f}".format(top1_acc, top2_acc))
+    
+    return top1_acc, top2_acc
