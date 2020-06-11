@@ -408,7 +408,7 @@ def evaluate_model(model, test_corpus, test_labels, eval="binary"):
 
     return predictions, accuracy_list
 
-def top2_acc(probabilities, true_classes, model,verbose=0):
+def top2_acc(probabilities, true_classes,verbose=0):
     '''
     Given a probability output of an C-Dimensional Sklearn <model>, outputs the
     Top-2 accuracy and the top_1 (classical accuracy) of the results, given the 
