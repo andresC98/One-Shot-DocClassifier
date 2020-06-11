@@ -30,17 +30,23 @@ class MaxSimClassifier(ClassifierMixin, BaseEstimator):
     model: doc2vec base model from gensim
     """
 
-    def __init__(self, dataset_type, preprocess = "custom" ,vector_size=50, min_count=2, epochs=50):
-        # TODO: Add more doc2vec model parameters
+    def __init__(self, dataset_type, preprocess = "simple" ,vector_size=50, min_count=2, epochs=50, dm=1, window=2):
+        # doc2vec parameters
         self.vector_size = vector_size
         self.min_count = min_count
         self.epochs = epochs
+        self.dm = dm
+        self.window = window
+        
+        #Classifier data parameters
         self.dataset_type = dataset_type
         self.preprocess = preprocess
 
         self.model = doc2vec.Doc2Vec(vector_size=self.vector_size,
                                      min_count=self.min_count,
-                                     epochs=self.epochs)
+                                     epochs=self.epochs,
+                                     dm=self.dm,
+                                     window=self.window)
 
     def fit(self, X, y):
         """A reference implementation of a fitting function for a classifier.
