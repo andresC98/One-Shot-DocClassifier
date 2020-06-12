@@ -1,3 +1,12 @@
+#################################################################
+# Maximum Similarity Classifier for document similarity.        #
+# Part of my Bachelor Thesis Project @ UC3M                     #
+#                                                               #
+# Author: Andres Carrillo Lopez                                 #
+# GitHub: AndresC98@github.com                                  #
+#                                                               #
+#################################################################
+
 import numpy as np
 from gensim.models import doc2vec
 from sklearn.base import BaseEstimator, ClassifierMixin
@@ -53,10 +62,8 @@ class MaxSimClassifier(ClassifierMixin, BaseEstimator):
         """A reference implementation of a fitting function for a classifier.
         Parameters
         ----------
-        X : array-like, shape (n_samples, n_features)
-            The training input samples.
-        y : array-like, shape (n_samples,)
-            The target values. An array of int.
+        X : The training input samples (Topic definitions) list of strings or wiki pages.
+        y : The target values. An array of int.s
         Returns
         -------
         self : object
@@ -64,6 +71,29 @@ class MaxSimClassifier(ClassifierMixin, BaseEstimator):
         """
         # Adequating corpus for inference later
         X = list(doc_utils.prepare_corpus(X, train_data=True, preprocess = self.preprocess,dataset_type=self.dataset_type))
+
+        self.model.build_vocab(X)
+        self.model.train(X, total_examples=self.model.corpus_count, epochs=self.model.epochs)
+
+        self.classes_ = unique_labels(y)
+        self.X_ = X
+        self.y_ = y
+
+        return self
+    
+    def fit_articles(self, X, y):
+        """MSC Fitting function for supervised approach: training with articles
+        Parameters
+        ----------
+        X : The training input articles.
+        y : The target values. An array of int.
+        Returns
+        -------
+        self : object
+            Returns self.
+        """
+        # Adequating corpus for inference later
+        X = list(doc_utils.prepare_train_articles(X, y,preprocess = self.preprocess))
 
         self.model.build_vocab(X)
         self.model.train(X, total_examples=self.model.corpus_count, epochs=self.model.epochs)

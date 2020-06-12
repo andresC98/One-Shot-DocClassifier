@@ -1,15 +1,10 @@
 #################################################################
 # Utils library with useful functions developed for the Project #
+# Part of my Bachelor Thesis Project @ UC3M                     #
 #                                                               #
 # Author: Andres Carrillo Lopez                                 #
 # GitHub: AndresC98@github.com                                  #
 #                                                               #
-#  -> Dependencies:                                             #
-#            - numpy                                            #
-#            - nltk                                             #
-#            - gensim                                           #
-#            - keras                                            #
-#            - string                                           #
 #################################################################
 
 # Data processing
@@ -376,6 +371,20 @@ def prepare_corpus(raw_text, train_data=True, preprocess='simple', dataset_type=
                 tokens = custom_preprocess(raw_topic_def)
             # we also add topic class id for training data
             yield gensim.models.doc2vec.TaggedDocument(tokens, [i])
+
+def prepare_train_articles(raw_text, y_text, preprocess='simple'):
+    '''
+    For GENSIM  model (MaxSimClassifier) SUPERVISED training on articles version.
+    Given a raw array of training articles,
+    performs text preprocessing and outputs processed tagged text.
+    '''
+    for i, raw_topic_articles in enumerate(raw_text):
+        if preprocess in 'simple':
+            tokens = gensim.utils.simple_preprocess(raw_topic_articles)
+        else:
+            tokens = custom_preprocess(raw_topic_articles)
+        # we also add topic class id for training data
+        yield gensim.models.doc2vec.TaggedDocument(tokens, [y_text[i]])
 
 
 def evaluate_model(model, test_corpus, test_labels, eval="binary"):
