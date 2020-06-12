@@ -59,7 +59,7 @@ class MaxSimClassifier(ClassifierMixin, BaseEstimator):
                                      workers=self.workers)
 
     def fit(self, X, y):
-        """A reference implementation of a fitting function for a classifier.
+        """Fits TOPIC DEFINITIONS and topic labels to MSC Model.
         Parameters
         ----------
         X : The training input samples (Topic definitions) list of strings or wiki pages.

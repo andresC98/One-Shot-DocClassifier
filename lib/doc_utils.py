@@ -340,31 +340,29 @@ def custom_preprocess(doc):
     return tokens
 
 
-def prepare_corpus(raw_text, train_data=True, preprocess='simple', dataset_type="wiki"):
+def prepare_corpus(X, train_data=True, preprocess='simple', dataset_type="wiki"):
     '''
     For GENSIM  model (MaxSimClassifier).
     Given a raw array of texts (either test data or training topics),
     performs text preprocessing and outputs processed text.
     '''
     if not train_data:
-        if dataset_type in "wiki":  # data is a list of tuples (2nd element being the class)
-            for i, topic in enumerate(raw_text):
-                for raw_article in topic[0]:
-                    if preprocess in 'simple':
-                        tokens = gensim.utils.simple_preprocess(raw_article)
-                    else:
-                        tokens = custom_preprocess(raw_article)
-                    yield tokens
+        if dataset_type in "wiki":  
+            for article in X:  
+                if preprocess in 'simple':
+                    tokens = gensim.utils.simple_preprocess(article)
+                else:
+                    tokens = custom_preprocess(article)
+                yield tokens
         else:  # arxiv
-            for subject in raw_text:
-                for paper in subject["papers"]:
-                    if preprocess in 'simple':
-                        tokens = gensim.utils.simple_preprocess(paper["title"] + " : " + paper["abstract"])
-                    else:
-                        tokens = custom_preprocess(paper["title"] + " : " + paper["abstract"])
-                    yield tokens
+            for paper in X:
+                if preprocess in 'simple':
+                    tokens = gensim.utils.simple_preprocess(paper)
+                else:
+                    tokens = custom_preprocess(paper)
+                yield tokens
     else:
-        for i, raw_topic_def in enumerate(raw_text):
+        for i, raw_topic_def in enumerate(X):
             if preprocess in 'simple':
                 tokens = gensim.utils.simple_preprocess(raw_topic_def)
             else:
@@ -372,13 +370,13 @@ def prepare_corpus(raw_text, train_data=True, preprocess='simple', dataset_type=
             # we also add topic class id for training data
             yield gensim.models.doc2vec.TaggedDocument(tokens, [i])
 
-def prepare_train_articles(raw_text, y_text, preprocess='simple'):
+def prepare_train_articles(X, y_text, preprocess='simple'):
     '''
     For GENSIM  model (MaxSimClassifier) SUPERVISED training on articles version.
     Given a raw array of training articles,
     performs text preprocessing and outputs processed tagged text.
     '''
-    for i, raw_topic_articles in enumerate(raw_text):
+    for i, raw_topic_articles in enumerate(X):
         if preprocess in 'simple':
             tokens = gensim.utils.simple_preprocess(raw_topic_articles)
         else:
