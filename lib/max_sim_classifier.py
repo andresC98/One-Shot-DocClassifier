@@ -233,7 +233,7 @@ class MaxSimClassifier(ClassifierMixin, BaseEstimator):
             else: #best papers
                 new_x_train = x_train_papers
 
-            return dataset, new_x_train
+            return new_x_train
 
     def wiki_pseudo_label(self, x_train, dataset,result="extended" ,top_n=2, debug = False ):
 
@@ -286,4 +286,4 @@ class MaxSimClassifier(ClassifierMixin, BaseEstimator):
         else: #best articles
             new_x_train = x_train_articles
 
-        return dataset ,new_x_train
+        return new_x_train
