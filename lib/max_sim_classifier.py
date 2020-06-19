@@ -17,17 +17,27 @@ import doc_utils
 
 class MaxSimClassifier(ClassifierMixin, BaseEstimator):
     """ 
-    Implementation of Maximum similarity classifier.
+    Implementation of Maximum similarity classifier. 
+    Employs document vector representations (via doc2vec) for later inference by
+    computing similarity against the trained documents vs the target documents.
     Parameters
     ----------
     dataset_type: str
         Either "wiki" or "arxiv"
+    preprocess: str
+        Either simple (just tokenization) or complex (token + lemat + stopwords rem + punct removal)
     vector_size : int
-        TODO
+        Dimensions of the embedded vectors resulting from doc2vec representations of documents
     min_count : int
-        TODO
+        Min number of occurrences for a word in a given document to be taken into account
     epochs : int
-        TODO
+        Numbers of iterations during doc2vec training through a document
+    dm: int
+        Using either Distributed Memory (dm=1) or DBoW (dm=0) doc2vec algorithms
+    window: int
+        Window of context words taken into account for doc2vec
+    workers: int
+        Multiprocessing 
     Attributes
     ----------
     X_ : List of wikipedia pages defining topics
@@ -59,7 +69,8 @@ class MaxSimClassifier(ClassifierMixin, BaseEstimator):
                                      workers=self.workers)
 
     def fit(self, X, y):
-        """Fits TOPIC DEFINITIONS and topic labels to MSC Model.
+        """
+        Fits TOPIC DEFINITIONS and topic labels to MSC Model.
         Parameters
         ----------
         X : The training input samples (Topic definitions) list of strings or wiki pages.
@@ -82,7 +93,8 @@ class MaxSimClassifier(ClassifierMixin, BaseEstimator):
         return self
     
     def fit_articles(self, X, y):
-        """MSC Fitting function for supervised approach: training with articles
+        """
+        MSC Fitting function for supervised approach: training with articles
         Parameters
         ----------
         X : The training input articles.
@@ -110,11 +122,11 @@ class MaxSimClassifier(ClassifierMixin, BaseEstimator):
         Parameters
         ----------
         X : list 
-            The input dataset: Arxiv dataset to classify
+            The input dataset: Wiki or Arxiv dataset to classify
         Returns
         -------
         y : ndarray, shape (n_samples,)
-            Prediction output .
+            Prediction outputs .
         """
         # Check is fit had been called
         check_is_fitted(self, ['X_', 'y_'])
@@ -134,7 +146,11 @@ class MaxSimClassifier(ClassifierMixin, BaseEstimator):
 
     def score(self, X, y, eval="weighted"):
         """
-        TODO:  Document
+        Score function that returns depending on "eval" parameter:
+            - top1: top-1 accuracy 
+            - top2: top-2 accuracy
+            - weighted: weighted accuracy
+        of the predictions for articles "X" given true labels "y".
         """
         accuracy_list = list()
         outputs = list()

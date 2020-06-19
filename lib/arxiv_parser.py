@@ -1,3 +1,12 @@
+#################################################################
+# arXiv papers parser / data extractor developed for the Project#
+# Part of my Bachelor Thesis Project @ UC3M                     #
+#                                                               #
+# Author: Andres Carrillo Lopez                                 #
+# GitHub: AndresC98@github.com                                  #
+#                                                               #
+#################################################################
+
 from bs4 import BeautifulSoup
 import urllib.request
 import time

@@ -303,7 +303,7 @@ def plotConfMatrix(y_test, predictions, model, dataset_type="wiki"):
 def plotDefinitionLengths(definitions, dataset_type):
     '''
     Given topic definitions ("x_train") from either Wikipedia or Arxiv dataset (dataset_type)
-    , plots horizontal bar plot of topic definitio length (number of words).
+    , plots horizontal bar plot of topic definitions length (number of words).
     '''
     total_len = 0
     topic_lengths = list()
@@ -330,7 +330,8 @@ def plotDefinitionLengths(definitions, dataset_type):
 
 def custom_preprocess(doc):
     '''
-    TODO: Document
+    Applies tokenization + lemmatization + punctuation removal + stopwords filtering to a document.
+    Returns tokens of processed document.
     '''
     tokenized_doc = word_tokenize(doc)
     lemmatized_doc = [LEMMATIZER.lemmatize(word) for word in tokenized_doc]
@@ -387,7 +388,8 @@ def prepare_train_articles(X, y_text, preprocess='simple'):
 
 def evaluate_model(model, test_corpus, test_labels, eval="binary"):
     '''
-    Given a doc2vec trained model grom GENSIM and a test labeled corpus,
+    (Testing function)
+    Given a doc2vec trained model from GENSIM and a test labeled corpus,
     performs similarity queries of test corpus vs topic definitions.
     
     Returns predictions array and accuracy list.
@@ -417,9 +419,9 @@ def evaluate_model(model, test_corpus, test_labels, eval="binary"):
 
 def top2_acc(probabilities, true_classes,verbose=0):
     '''
-    Given a probability output of an C-Dimensional Sklearn <model>, outputs the
-    Top-2 accuracy and the top_1 (classical accuracy) of the results, given the 
-    true_classes of the classification problem.
+    Given a probability output of an model (MSC, FFNN, or Sklearn classifiers), 
+    outputs the Top-2 accuracy and the top_1 (classical accuracy) of the results, 
+    given the true_classes of the classification problem.
     '''
     top1_acc_list = []
     top2_acc_list = []
